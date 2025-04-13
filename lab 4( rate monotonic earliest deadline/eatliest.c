@@ -1,83 +1,71 @@
 #include <stdio.h>
 
+#define MAX_TASKS 10
+#define MAX_INSTANCES 100
+
 typedef struct {
     int pid;
-    int deadline;   // Absolute deadline
-    int burst;      // Execution time
-    int remaining;  // Remaining execution time
-    int arrival;    // Arrival time
+    int arrival;
+    int deadline;
+    int burst;
+    int remaining;
+    int abs_deadline;
 } Task;
-
-void sortByDeadline(Task tasks[], int n, int current_time) {
-    for (int i = 0; i < n; i++) {
-        for (int j = i+1; j < n; j++) {
-            // Compare absolute deadlines
-            int di = tasks[i].arrival + tasks[i].deadline;
-            int dj = tasks[j].arrival + tasks[j].deadline;
-            if (di > dj) {
-                Task temp = tasks[i];
-                tasks[i] = tasks[j];
-                tasks[j] = temp;
-            }
-        }
-    }
-}
-
-void earliestDeadlineFirst(Task tasks[], int n, int sim_time) {
-    printf("\nEarliest-Deadline First Scheduling:\n");
-    printf("Time\tTask\n");
-
-    for (int i = 0; i < n; i++) {
-        tasks[i].remaining = tasks[i].burst;
-    }
-
-    for (int time = 0; time < sim_time; time++) {
-        // Check for new arrivals
-        for (int i = 0; i < n; i++) {
-            if (time == tasks[i].arrival) {
-                tasks[i].remaining = tasks[i].burst;
-            }
-        }
-
-        // Sort tasks by deadline (earliest first)
-        sortByDeadline(tasks, n, time);
-
-        int scheduled = -1;
-
-        // Find task with earliest deadline that has work remaining
-        for (int i = 0; i < n; i++) {
-            if (tasks[i].arrival <= time && tasks[i].remaining > 0) {
-                scheduled = i;
-                break;
-            }
-        }
-
-        // Execute the task
-        if (scheduled != -1) {
-            tasks[scheduled].remaining--;
-            printf("%d\tT%d\n", time, tasks[scheduled].pid);
-        } else {
-            printf("%d\tIdle\n", time);
-        }
-    }
-}
 
 int main() {
     int n, sim_time;
     printf("Enter number of tasks: ");
     scanf("%d", &n);
 
-    Task tasks[n];
+    int period[n], deadline[n], capacity[n];
+
     for (int i = 0; i < n; i++) {
-        tasks[i].pid = i+1;
-        printf("Enter arrival time, relative deadline and burst time for task T%d: ", i+1);
-        scanf("%d %d %d", &tasks[i].arrival, &tasks[i].deadline, &tasks[i].burst);
+        printf("Enter Capacity (Burst), Deadline, and Period for Task T%d: ", i + 1);
+        scanf("%d %d %d", &capacity[i], &deadline[i], &period[i]);
     }
 
-    printf("Enter simulation time: ");
+    printf("Enter total simulation time: ");
     scanf("%d", &sim_time);
 
-    earliestDeadlineFirst(tasks, n, sim_time);
+    Task instances[MAX_INSTANCES];
+    int inst_count = 0;
+
+    // Generate instances of tasks
+    for (int i = 0; i < n; i++) {
+        for (int t = 0; t < sim_time; t += period[i]) {
+            Task ti;
+            ti.pid = i + 1;
+            ti.arrival = t;
+            ti.burst = capacity[i];
+            ti.remaining = capacity[i];
+            ti.deadline = deadline[i];
+            ti.abs_deadline = t + deadline[i];
+            instances[inst_count++] = ti;
+        }
+    }
+
+    printf("\nEarliest Deadline First Scheduling:\n");
+    printf("Time\tTask\n");
+
+    for (int time = 0; time < sim_time; time++) {
+        int selected = -1;
+        int min_deadline = 1e9;
+
+        // Select task with earliest deadline that's ready
+        for (int i = 0; i < inst_count; i++) {
+            if (instances[i].arrival <= time && instances[i].remaining > 0 && instances[i].abs_deadline < min_deadline) {
+                min_deadline = instances[i].abs_deadline;
+                selected = i;
+            }
+        }
+
+        if (selected != -1) {
+            instances[selected].remaining--;
+            printf("%d\tT%d\n", time, instances[selected].pid);
+        } else {
+            printf("%d\tIdle\n", time);
+        }
+    }
 
     return 0;
 }
